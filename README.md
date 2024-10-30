@@ -27,7 +27,7 @@ The `qkk` command's options are made up of three parts:
 This **IS** a required field.
 2. `--pattern` or `-p`: A certian string pattern you want to search the resource with. This essentially 
 greps for your resource using the supllied pattern. This is **NOT** a required field.
-3. `<action>`. The trails arg should be the action you want to take agaisnt your resource. Examples could 
+3. `<action>`. The trailing arg should be the action and any of its arguments you want to take agaisnt your resource. Examples could 
 be: `logs -f` or `edit` or `describe`.
 > Note: the action does not have to be a single word, this is the place to add kubectl specific arguments 
 your action
