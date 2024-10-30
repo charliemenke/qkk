@@ -50,7 +50,7 @@ func (s state) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (s state) View() string {
-	str := "select which resource you want to see logs for:\n\n"
+	str := "select which resource you want to run your action on:\n\n"
 	// str += fmt.Sprintf("cursor: %d\n", s.cursor)
 	// str += fmt.Sprintf("mod cursor: %d\n", (s.cursor - (15 * (s.cursor / 15))))
 	chunkedChoices := s.choices[15*(s.cursor/15):]
