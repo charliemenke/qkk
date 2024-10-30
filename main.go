@@ -2,8 +2,10 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -26,63 +28,70 @@ func (s state) Init() tea.Cmd {
 func (s state) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
-	// Is it a key press?
 	case tea.KeyMsg:
-
-		// Cool, what was the actual key pressed?
 		switch msg.String() {
-
-		// These keys should exit the program.
 		case "ctrl+c", "q":
 			return s, tea.Quit
-
-		// The "up" and "k" keys move the cursor up
 		case "up", "k":
 			if s.cursor > 0 {
 				s.cursor--
 			}
-
-		// The "down" and "j" keys move the cursor down
 		case "down", "j":
 			if s.cursor < len(s.choices)-1 {
 				s.cursor++
 			}
-
-		// The "enter" key and the spacebar (a literal space) toggle
-		// the selected state for the item that the cursor is pointing at.
 		case "enter", " ":
 			s.selected = strings.Fields(s.choices[s.cursor])[0]
-			fmt.Printf("getting logs...\n\n")
 			return s, tea.Quit
 		}
 	}
 
-	// Return the updated model to the Bubble Tea runtime for processing.
-	// Note that we're not returning a command.
 	return s, nil
 }
 
 func (s state) View() string {
 	str := "select which resource you want to see logs for:\n\n"
-	for i, choice := range s.choices {
-		// Is the cursor pointing at this choice?
-		cursor := " " // no cursor
-		if s.cursor == i {
-			cursor = ">" // cursor!
+    // str += fmt.Sprintf("cursor: %d\n", s.cursor)
+    // str += fmt.Sprintf("mod cursor: %d\n", (s.cursor - (15 * (s.cursor / 15))))
+    chunkedChoices := s.choices[15 * (s.cursor/15):]
+    
+	for i, choice := range chunkedChoices {
+        if i == 0 && s.cursor >= 15 {
+            str += fmt.Sprintln("  ...")
+        }
+		cursor := " "
+		if (s.cursor - (15 * (s.cursor / 15))) == i {
+			cursor = ">" 
 		}
 
 		// Render the row
 		str += fmt.Sprintf("%s %s\n", cursor, choice)
+
+        if i == 14 {
+            str += fmt.Sprintln("  ...")
+            break
+        }
 	}
 
 	return str
 }
 
 func initState(resource, pattern string) (state, error) {
-	out, err := exec.Command("bash", "-c", fmt.Sprintf(`kubectl get %s --no-headers | grep -i "%s"`, resource, pattern)).Output()
+    cmdStr := fmt.Sprintf(`kubectl get %s --no-headers`, resource)  
+    if pattern != "" {
+        cmdStr += fmt.Sprintf(` | grep -i "%s"`, pattern)
+    }
+
+	out, err := exec.Command("bash", "-c", cmdStr).Output()
 	if err != nil {
-		return state{}, err
+		return state{}, errors.Join(fmt.Errorf("%s", string(out)), err)
 	}
+
+    choices := strings.Split(strings.Trim(string(out), "\n"), "\n")
+    if len(choices) == 0 {
+        fmt.Printf("no %s results found with pattern '%s'\n", resource, pattern)
+        os.Exit(0)
+    }
 
 	return state{
 		pattern:  pattern,
@@ -98,24 +107,43 @@ func main() {
 
 	// init cli args
 	resourceFlg := flag.String("resource", "", "which kubernetes resource to get logs from")
+	resourceFlgShort := flag.String("r", "", "which kubernetes resource to get logs from")
 	patternFlg := flag.String("pattern", "", "grep pattern to search across specified kubernetes resource")
+	patternFlgShort := flag.String("p", "", "grep pattern to search across specified kubernetes resource")
 	flag.Parse()
 
-	if *resourceFlg == "" {
-		fmt.Println("missing required flag --resource")
+	if *resourceFlg == "" && *resourceFlgShort == "" {
+		fmt.Println("missing required flag --resource or -r")
 		os.Exit(1)
 
 	}
-	if *patternFlg == "" {
-		fmt.Println("missing required flag --pattern")
-		os.Exit(1)
 
-	}
+    var resource string
+    if *resourceFlg != "" {
+        resource = *resourceFlg
+    } else {
+        resource = *resourceFlgShort
+    }
+
+    var pattern string
+    if patternFlg == nil && patternFlgShort == nil {
+        pattern = ""
+    } else if *patternFlg != "" {
+        pattern = *patternFlg
+    } else {
+        pattern = *patternFlgShort
+    }
+
+    actions := flag.Args()
+    if len(actions) == 0 {
+        fmt.Println("missing kubectl action like 'log' or 'edit'")
+        os.Exit(1)
+    }
 
 	// init cli tool
-	model, err := initState(*resourceFlg, *patternFlg)
+	model, err := initState(resource, pattern)
 	if err != nil {
-		fmt.Printf("failed to start qklog: %v", err)
+		fmt.Printf("failed to start qklog: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -125,22 +153,45 @@ func main() {
 		fmt.Printf("error running qklog: %v", err)
 	}
 
+    fmt.Println("")
+
 	if state, ok := returnedModel.(state); ok && state.selected != "" {
-		cmd := exec.Command("kubectl", "logs", state.selected)
+        // fmt.Printf("action: %s\n", strings.Join(actions, " "))
+        // fmt.Printf("resource: %s\n", resource)
+        // fmt.Printf("selected: %s\n", state.selected)
+
+        // logs action has different pattern
+        var cmd *exec.Cmd
+        if actions[0] == "logs" {
+		    cmd = exec.Command("kubectl", append(actions, state.selected)...)
+        } else {
+		    cmd = exec.Command("kubectl", append(actions, state.resource, state.selected)...)
+        }
+        fmt.Printf("running: %s\n\n\n", cmd.String())
+
 		stdout, _ := cmd.StdoutPipe()
+		stdoerr, _ := cmd.StderrPipe()
+
+        // if action is edit we need to redirect the command std outputs to simulate a terminal
+        if actions[0] == "edit" {
+            cmd.Stdin = os.Stdin
+            cmd.Stdout = os.Stdout
+            cmd.Stderr = os.Stderr
+        }
+
 		err := cmd.Start()
 		if err != nil {
-			fmt.Printf("error getting logs from %s: %v", state.selected, err)
+            fmt.Printf("error running kubectl action '%s' on resource '%s': %v", strings.Join(actions, " "), state.resource, err)
 			stdout.Close()
 			os.Exit(1)
 		}
-		buf := bufio.NewScanner(stdout)
+		buf := bufio.NewScanner(io.MultiReader(stdout, stdoerr))
 		for buf.Scan() {
 			fmt.Println(buf.Text())
 		}
 		err = cmd.Wait()
 		if err != nil {
-			fmt.Printf("error getting logs from %s: %v", state.selected, err)
+            fmt.Printf("error running kubectl action '%s' on resource '%s': %v", strings.Join(actions, " "), state.resource, err)
 			os.Exit(1)
 		}
 	}

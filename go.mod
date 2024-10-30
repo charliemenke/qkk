@@ -1,4 +1,4 @@
-module github.com/charliemenke/qklog
+module github.com/charliemenke/qkk
 
 go 1.22.0
 
