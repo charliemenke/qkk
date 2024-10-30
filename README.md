@@ -32,5 +32,6 @@ be: `logs -f` or `edit` or `describe`.
 > Note: the action does not have to be a single word, this is the place to add kubectl specific arguments 
 your action
 
-Putting this all together: `qkk -r=pod -p=staging logs -f`. Running this command would get all kubernetes 
-that have `"dev"` in their names, present the list of matching pods to you to select, then run: `kubectl logs -f <your selection>`.
+Putting this all together: `qkk -r=pod -p=staging logs -f`. Running this command would get all kubernetes pods
+that have `"staging"` in their names, present the list of matching pods to you to select from, 
+then run: `kubectl logs -f <your selection>`.
