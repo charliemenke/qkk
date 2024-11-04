@@ -11,6 +11,11 @@ your optional pattern for you to select from.
 
 #### Installation
 
+If you dont already have `kubectl` installed, [install it](https://kubernetes.io/docs/tasks/tools/#kubectl) 
+and point it at your cluster.
+
+Next, build the `qkk` binary.
+
 ```bash
 git clone git@github.com:charliemenke/qkk.git
 cd ./qkk
