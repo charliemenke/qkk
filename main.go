@@ -140,14 +140,14 @@ func main() {
 	// init cli tool
 	model, err := initState(resource, namespace, pattern)
 	if err != nil {
-		fmt.Printf("failed to start qklog: %v\n", err)
+		fmt.Printf("failed to start qkk: %v\n", err)
 		os.Exit(1)
 	}
 
-	qklog := tea.NewProgram(model)
-	returnedModel, err := qklog.Run()
+	qkk := tea.NewProgram(model)
+	returnedModel, err := qkk.Run()
 	if err != nil {
-		fmt.Printf("error running qklog: %v", err)
+		fmt.Printf("error running qkk: %v", err)
 	}
 
 	fmt.Println("")
