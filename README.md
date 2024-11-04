@@ -1,4 +1,4 @@
-### QKK (Quick Kubernetes)
+### QKK (Quick Kubectl)
 
 QKK is a simple cli tool that allows users to run (most) kubectl verbs on resources while 
 also searching for a specific resource name.
