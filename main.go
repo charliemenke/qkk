@@ -113,17 +113,17 @@ func initState(resource, namespace, pattern string) (state, error) {
 
 func main() {
 	// init cli args
-    var resource string
+	var resource string
 	flag.StringVar(&resource, "resource", "", "which kubernetes resource to get logs from")
 	flag.StringVar(&resource, "r", "", "which kubernetes resource to get logs from")
-    var namespace string
+	var namespace string
 	flag.StringVar(&namespace, "namespace", "default", "which kubernetes namespace to search in")
 	flag.StringVar(&namespace, "n", "default", "which kubernetes namespace to search in")
-    var pattern string
+	var pattern string
 	flag.StringVar(&pattern, "pattern", "", "grep pattern to search across specified kubernetes resource")
 	flag.StringVar(&pattern, "p", "", "grep pattern to search across specified kubernetes resource")
 
-    flag.Usage = func() { fmt.Print(usage) }
+	flag.Usage = func() { fmt.Print(usage) }
 	flag.Parse()
 
 	if resource == "" {
