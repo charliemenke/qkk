@@ -21,6 +21,15 @@ type state struct {
 	cursor   int      // current item selected in choices
 }
 
+const usage = `Usage of qkk:
+  qkk [-n NAMESPACE] -r RESOURCE [-p PATTERN] ACTION ...
+Options:
+  -n, --namespace NAMESPACE        Search and take action in k8s namespace NAMESPACE. default: 'default'
+  -r, --resource RESOURCE          Search and take action on k8 resource RESOURCE.
+  -p, --pattern PATTERN            Search k8 RESOURCE by pattern PATTERN. default: ''
+  -h, --help                       prints help information 
+`
+
 func (s state) Init() tea.Cmd {
 	return nil
 }
@@ -76,8 +85,8 @@ func (s state) View() string {
 	return str
 }
 
-func initState(resource, pattern string) (state, error) {
-	cmdStr := fmt.Sprintf(`kubectl get %s --no-headers`, resource)
+func initState(resource, namespace, pattern string) (state, error) {
+	cmdStr := fmt.Sprintf(`kubectl get %s --no-headers -n %s`, resource, namespace)
 	if pattern != "" {
 		cmdStr += fmt.Sprintf(` | grep -i "%s"`, pattern)
 	}
@@ -103,35 +112,23 @@ func initState(resource, pattern string) (state, error) {
 }
 
 func main() {
-	fmt.Println("starting qklog")
-
 	// init cli args
-	resourceFlg := flag.String("resource", "", "which kubernetes resource to get logs from")
-	resourceFlgShort := flag.String("r", "", "which kubernetes resource to get logs from")
-	patternFlg := flag.String("pattern", "", "grep pattern to search across specified kubernetes resource")
-	patternFlgShort := flag.String("p", "", "grep pattern to search across specified kubernetes resource")
+    var resource string
+	flag.StringVar(&resource, "resource", "", "which kubernetes resource to get logs from")
+	flag.StringVar(&resource, "r", "", "which kubernetes resource to get logs from")
+    var namespace string
+	flag.StringVar(&namespace, "namespace", "default", "which kubernetes namespace to search in")
+	flag.StringVar(&namespace, "n", "default", "which kubernetes namespace to search in")
+    var pattern string
+	flag.StringVar(&pattern, "pattern", "", "grep pattern to search across specified kubernetes resource")
+	flag.StringVar(&pattern, "p", "", "grep pattern to search across specified kubernetes resource")
+
+    flag.Usage = func() { fmt.Print(usage) }
 	flag.Parse()
 
-	if *resourceFlg == "" && *resourceFlgShort == "" {
+	if resource == "" {
 		fmt.Println("missing required flag --resource or -r")
 		os.Exit(1)
-
-	}
-
-	var resource string
-	if *resourceFlg != "" {
-		resource = *resourceFlg
-	} else {
-		resource = *resourceFlgShort
-	}
-
-	var pattern string
-	if patternFlg == nil && patternFlgShort == nil {
-		pattern = ""
-	} else if *patternFlg != "" {
-		pattern = *patternFlg
-	} else {
-		pattern = *patternFlgShort
 	}
 
 	actions := flag.Args()
@@ -141,7 +138,7 @@ func main() {
 	}
 
 	// init cli tool
-	model, err := initState(resource, pattern)
+	model, err := initState(resource, namespace, pattern)
 	if err != nil {
 		fmt.Printf("failed to start qklog: %v\n", err)
 		os.Exit(1)
@@ -163,9 +160,9 @@ func main() {
 		// logs action has different pattern
 		var cmd *exec.Cmd
 		if actions[0] == "logs" {
-			cmd = exec.Command("kubectl", append(actions, state.selected)...)
+			cmd = exec.Command("kubectl", append(actions, "-n", namespace, state.selected)...)
 		} else {
-			cmd = exec.Command("kubectl", append(actions, state.resource, state.selected)...)
+			cmd = exec.Command("kubectl", append(actions, "-n", namespace, state.resource, state.selected)...)
 		}
 		fmt.Printf("running: %s\n\n\n", cmd.String())
 

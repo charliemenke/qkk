@@ -1,11 +1,12 @@
 ### QKK (Quick Kubernetes)
 
-QKK is a very simple cli tool that allows users to run kubectl actions on resources while 
+QKK is a simple cli tool that allows users to run (most) kubectl verbs on resources while 
 also searching for a specific resource name.
 
 A common pattern is to search for some kubernetes resource, copy its name, then run that 
 action via a copy paste. Now all that is combined in one tool, no more taking your hands off 
-the keyboard.
+the keyboard. Instead, `qkk` will present you with a quick list of resources that matched 
+your optional pattern for you to select from.
 
 
 #### Installation
@@ -22,16 +23,22 @@ to call it globally.
 
 #### Usage
 
-The `qkk` command's options are made up of three parts:
-1. `--resource` or `-r`: The resource you want to take an action on. Examples being `Pod` or `Deployment`. 
-This **IS** a required field.
-2. `--pattern` or `-p`: A certian string pattern you want to search the resource with. This essentially 
-greps for your resource using the supllied pattern. This is **NOT** a required field.
-3. `<action>`. The trailing arg should be the action and any of its arguments you want to take agaisnt your resource. Examples could 
-be: `logs -f` or `edit` or `describe`.
-> Note: the action does not have to be a single word, this is the place to add kubectl specific arguments 
+```bash
+qkk % ./qkk --help
+Usage of qkk:
+  qkk [-n NAMESPACE] -r RESOURCE [-p PATTERN] ACTION ...
+Options:
+  -n, --namespace NAMESPACE        Search and take action in k8s namespace NAMESPACE. default: 'default'
+  -r, --resource RESOURCE          Search and take action on k8 resource RESOURCE.
+  -p, --pattern PATTERN            Search k8 RESOURCE by pattern PATTERN. default: ''
+  -h, --help                       prints help information
+```
+
+> Note: the ACTION does not have to be a single word, this is the place to add kubectl specific arguments 
 your action
 
-Putting this all together: `qkk -r=pod -p=staging logs -f`. Running this command would get all kubernetes pods
-that have `"staging"` in their names, present the list of matching pods to you to select from, 
+Putting this all together: `qkk -r=pod -p=staging logs -f`. Running this command would get all kubernetes pods 
+in the default namespace that have `"staging"` in their names, present the list of matching pods to you to select from, 
 then run: `kubectl logs -f <your selection>`.
+
+You can navigate the quick list with arrow keys, or using vim keys `h`, `j`, `k`, `l`.
